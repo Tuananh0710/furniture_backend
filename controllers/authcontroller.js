@@ -140,17 +140,16 @@ const login = async (req, res) => {
     });
   }
 };
-q;
 
 const getProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await query(
-      "SELECT UserID, Username, Email, FullName, Role FROM Users WHERE UserID = ? AND IsActive = 1",
+      "SELECT UserID, Username, Email, FullName, Role, Phone, Address FROM Users WHERE UserID = ? AND IsActive = 1",
       [id]
     );
     if (result.length === 0) {
-      return res.statas(401).json({
+      return res.status(401).json({
         success: false,
         message: "loi khi lay thong tin user",
       });
@@ -165,4 +164,74 @@ const getProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile };
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Kiểm tra cơ bản
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng điền đầy đủ thông tin",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới và xác nhận không khớp",
+      });
+    }
+
+    // Lấy userId từ middleware auth (đã xác thực)
+    const userId = req.user.UserID;
+
+    // 1. Lấy user từ DB để kiểm tra mật khẩu cũ
+    const [user] = await query(
+      "SELECT PasswordHash FROM Users WHERE UserID = ?",
+      [userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng",
+      });
+    }
+
+    // 2. Kiểm tra mật khẩu cũ
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.PasswordHash
+    );
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu hiện tại không đúng",
+      });
+    }
+
+    // 3. Hash mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // 4. Cập nhật vào DB
+    await query("UPDATE Users SET PasswordHash = ? WHERE UserID = ?", [
+      newPasswordHash,
+      userId,
+    ]);
+
+    res.json({
+      success: true,
+      message: "Đổi mật khẩu thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi đổi mật khẩu:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+    });
+  }
+};
+
+module.exports = { register, login, getProfile, changePassword };
