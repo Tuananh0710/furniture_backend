@@ -2,83 +2,120 @@ const orderModel = require("../models/Order");
 
 class OrderController {
   // Lấy tất cả đơn hàng của user hiện tại
-  getMyOrders(req, res) {
+  // ⚠️ CHUYỂN THÀNH ARROW FUNCTION
+  getMyOrders = async (req, res) => {
+    // Thay đổi ở đây
     try {
-      // Lấy userId từ middleware auth (đã xác thực)
+      // ... (Phần logic kiểm tra user ID giữ nguyên)
       const userId = req.user.UserID;
 
       if (!userId) {
-        return res.status(400).json({
+        return res.status(401).json({
           success: false,
-          message: "Không tìm thấy thông tin người dùng",
+          message:
+            "Người dùng chưa đăng nhập hoặc phiên đăng nhập không hợp lệ",
         });
       }
 
-      console.log(`👤 User ${userId} đang xem đơn hàng`);
+      // Gọi model để lấy đơn hàng
+      const orders = await orderModel.getOrdersByUserId(userId);
 
-      orderModel.getOrdersByUserId(userId, (error, orders) => {
-        if (error) {
-          console.error("❌ Lỗi trong controller:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Lỗi server khi lấy đơn hàng",
-            error: error.message,
-          });
-        }
+      // Xử lý dữ liệu đơn hàng để hiển thị
+      const processedOrders = orders.map((order) => ({
+        OrderID: order.OrderID,
+        // ✅ Bây giờ 'this' đã trỏ đúng đến OrderController
+        Date: this.formatDate(order.OrderDate),
+        Address: order.ShippingAddress,
+        OrderValue: this.formatCurrency(order.TotalAmount),
+        PaymentStatus: this.getPaymentStatusText(order.PaymentStatus),
+        ShippingStatus: this.getShippingStatusText(order.OrderStatus),
+      }));
 
-        // Format data để hiển thị lên bảng
-        const formattedOrders = orders.map((order) => ({
-          OrderID: order.OrderID,
-          OrderCode: order.OrderCode,
-          Date: new Date(order.OrderDate).toLocaleDateString("vi-VN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          Address: order.ShippingAddress,
-          OrderValue: new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }).format(order.TotalAmount),
-          PaymentStatus: this.getPaymentStatusText(order.PaymentStatus),
-          ShippingStatus: this.getShippingStatusText(order.OrderStatus),
-        }));
-
-        res.json({
-          success: true,
-          message: "Lấy danh sách đơn hàng thành công",
-          data: {
-            user: {
-              UserID: req.user.UserID,
-              FullName: req.user.FullName || orders[0]?.FullName,
-            },
-            orders: formattedOrders,
-            summary: {
-              totalOrders: orders.length,
-              totalSpent: orders.reduce(
-                (sum, order) => sum + order.TotalAmount,
-                0
-              ),
-            },
-          },
-        });
-      });
+      // Trả về kết quả
+      return res.status(200).json({ data: processedOrders });
     } catch (error) {
-      console.error("🔥 Lỗi không xác định:", error);
+      console.error(" Lỗi không xác định:", error);
       res.status(500).json({
         success: false,
         message: "Lỗi server không xác định",
         error: error.message,
       });
     }
-  }
+  };
+
+  // Lấy chi tiết đơn hàng theo ID
+  getOrderDetail = async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user.UserID; // Đã xác thực qua middleware `auth`
+
+      if (!orderId || isNaN(parseInt(orderId))) {
+        return res.status(400).json({
+          success: false,
+          message: "OrderID không hợp lệ",
+        });
+      }
+
+      // Lấy chi tiết đơn hàng
+      const orderDetail = await orderModel.getOrderDetailById(
+        parseInt(orderId)
+      );
+
+      if (!orderDetail) {
+        return res.status(404).json({
+          success: false,
+          message: `Không tìm thấy đơn hàng ID: ${orderId}`,
+        });
+      }
+
+      // // ⚠️ Kiểm tra quyền truy cập: Chỉ user sở hữu mới được xem
+      // if (orderDetail.UserID !== userId && req.user.Role !== "Admin") {
+      //   return res.status(403).json({
+      //     success: false,
+      //     message: "Bạn không có quyền xem chi tiết đơn hàng này.",
+      //   });
+      // }
+
+      // Xử lý dữ liệu để hiển thị
+      const processedDetail = {
+        OrderID: orderDetail.OrderID,
+        OrderCode: orderDetail.OrderCode,
+        OrderDate: this.formatDate(orderDetail.OrderDate),
+        TotalAmount: this.formatCurrency(orderDetail.TotalAmount),
+        OrderStatus: this.getShippingStatusText(orderDetail.OrderStatus),
+        PaymentMethod: orderDetail.PaymentMethod,
+        PaymentStatus: this.getPaymentStatusText(orderDetail.PaymentStatus),
+        ShippingAddress: orderDetail.ShippingAddress,
+        ShippingFee: this.formatCurrency(orderDetail.ShippingFee),
+        CustomerName: orderDetail.FullName,
+        CustomerEmail: orderDetail.Email,
+        Items: orderDetail.Items.map((item) => ({
+          ProductID: item.ProductID,
+          ProductName: item.ProductName,
+          ProductCode: item.ProductCode,
+          Quantity: item.Quantity,
+          UnitPrice: this.formatCurrency(item.UnitPrice),
+          Subtotal: this.formatCurrency(item.Quantity * item.UnitPrice),
+          FirstImageUrl: item.FirstImageUrl, // URL ảnh đầu tiên
+        })),
+      };
+
+      // Trả về kết quả
+      return res.status(200).json({ data: processedDetail });
+    } catch (error) {
+      console.error(" Lỗi khi lấy chi tiết đơn hàng:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server không xác định",
+        error: error.message,
+      });
+    }
+  };
 
   // Helper: Chuyển status code thành text
   getPaymentStatusText(status) {
     const statusMap = {
-      Pending: "Chờ thanh toán",
+      Pending: "Chưa thanh toán", // Cập nhật từ "Chờ thanh toán"
       Paid: "Đã thanh toán",
       Failed: "Thanh toán thất bại",
       Refunded: "Đã hoàn tiền",
@@ -88,11 +125,12 @@ class OrderController {
 
   // Helper: Chuyển shipping status thành text
   getShippingStatusText(status) {
+    // Giả định OrderStatus trong DB là trạng thái vận chuyển
     const statusMap = {
       Pending: "Chờ xử lý",
       Confirmed: "Đã xác nhận",
       Packaging: "Đang đóng gói",
-      Shipping: "Đang giao hàng",
+      Shipping: "đang vận chuyển", // Cập nhật từ "Đang giao hàng"
       Completed: "Hoàn thành",
       Cancelled: "Đã hủy",
       Returned: "Đã trả hàng",
@@ -100,57 +138,22 @@ class OrderController {
     return statusMap[status] || status;
   }
 
-  // Lấy chi tiết đơn hàng (nếu cần)
-  getOrderDetail(req, res) {
-    try {
-      const orderId = req.params.orderId;
-      const userId = req.user.UserID;
+  // Helper: Định dạng ngày (DD/MM/YYYY)
+  formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
 
-      if (!orderId) {
-        return res.status(400).json({
-          success: false,
-          message: "Thiếu OrderID",
-        });
-      }
-
-      orderModel.getOrderDetail(orderId, userId, (error, orderDetail) => {
-        if (error) {
-          return res.status(500).json({
-            success: false,
-            message: "Lỗi server khi lấy chi tiết đơn hàng",
-            error: error.message,
-          });
-        }
-
-        if (!orderDetail) {
-          return res.status(404).json({
-            success: false,
-            message: "Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập",
-          });
-        }
-
-        // Parse JSON string nếu có
-        if (
-          orderDetail.OrderItems &&
-          typeof orderDetail.OrderItems === "string"
-        ) {
-          orderDetail.OrderItems = JSON.parse(orderDetail.OrderItems);
-        }
-
-        res.json({
-          success: true,
-          message: "Lấy chi tiết đơn hàng thành công",
-          data: orderDetail,
-        });
-      });
-    } catch (error) {
-      console.error("🔥 Lỗi khi lấy chi tiết đơn hàng:", error);
-      res.status(500).json({
-        success: false,
-        message: "Lỗi server",
-        error: error.message,
-      });
+  // Helper: Định dạng tiền tệ (VD: 2.400.000)
+  formatCurrency(amount) {
+    if (typeof amount !== "number") {
+      amount = parseFloat(amount);
     }
+    // Sử dụng toLocaleString để định dạng số theo chuẩn Việt Nam
+    return amount.toLocaleString("vi-VN", { minimumFractionDigits: 0 });
   }
 }
 
