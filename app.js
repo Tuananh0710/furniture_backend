@@ -15,7 +15,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Import routes
 const authRoutes = require("./routes/auth");
-const productRoutes = require("./routes/products");
+const productRoutes = require("./routes/productsRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes");
