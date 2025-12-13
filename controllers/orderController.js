@@ -23,7 +23,6 @@ class OrderController {
       // Xử lý dữ liệu đơn hàng để hiển thị
       const processedOrders = orders.map((order) => ({
         OrderID: order.OrderID,
-        // ✅ Bây giờ 'this' đã trỏ đúng đến OrderController
         Date: this.formatDate(order.OrderDate),
         Address: order.ShippingAddress,
         OrderValue: this.formatCurrency(order.TotalAmount),

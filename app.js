@@ -18,12 +18,14 @@ const authRoutes = require("./routes/auth");
 const productRoutes = require("./routes/products");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const checkoutRoutes = require("./routes/checkoutRoutes");
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/checkout", checkoutRoutes);
 
 // Health check route
 app.get("/api/health", (req, res) => {
