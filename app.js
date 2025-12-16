@@ -18,13 +18,13 @@ const authRoutes = require("./routes/auth");
 const productRoutes = require("./routes/products");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-
+const adminRoutes= require("./routes/adminRoute");
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
-
+app.use("/api/admin",adminRoutes);
 // Health check route
 app.get("/api/health", (req, res) => {
   res.json({

@@ -1,8 +1,6 @@
 const orderModel = require("../models/Order");
 
 class OrderController {
-  // Lấy tất cả đơn hàng của user hiện tại
-  // ⚠️ CHUYỂN THÀNH ARROW FUNCTION
   getMyOrders = async (req, res) => {
     // Thay đổi ở đây
     try {
@@ -147,14 +145,202 @@ class OrderController {
     return `${day}/${month}/${year}`;
   }
 
-  // Helper: Định dạng tiền tệ (VD: 2.400.000)
   formatCurrency(amount) {
     if (typeof amount !== "number") {
       amount = parseFloat(amount);
     }
-    // Sử dụng toLocaleString để định dạng số theo chuẩn Việt Nam
+
     return amount.toLocaleString("vi-VN", { minimumFractionDigits: 0 });
   }
+
+    async getTotalRevenue(req, res) {
+    try {
+      const { start_date, end_date } = req.query;
+      
+      if (!start_date || !end_date) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng cung cấp start_date và end_date'
+        });
+      }
+      
+      // Chỉ lấy tổng doanh thu
+      const totalRevenue = await orderModel.getTotalRevenueByDateRange(start_date, end_date);
+      
+      res.status(200).json({
+        success: true,
+        revenue: new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+          }).format(totalRevenue)
+      });
+    } catch (error) {
+      console.error("Get revenue error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error when getting revenue",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+
+async getTotalOrders(req, res) {
+  try {
+    const { start_date, end_date } = req.query;
+    
+    if (!start_date || !end_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp start_date và end_date'
+      });
+    }
+    
+    const totalOrders = await orderModel.getTotalOrdersByDateRange(start_date, end_date);
+    
+    res.status(200).json({
+      success: true,
+      total_orders: totalOrders,
+      formatted_total: totalOrders.toLocaleString('vi-VN')
+    });
+  } catch (error) {
+    console.error("Get total orders error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy tổng đơn hàng",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}
+
+async getTotalCustomers(req, res) {
+  try {
+    const { start_date, end_date } = req.query;
+    
+    if (!start_date || !end_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp start_date và end_date'
+      });
+    }
+    
+    const totalCustomers = await orderModel.getTotalCustomersByDateRange(start_date, end_date);
+    
+    res.status(200).json({
+      success: true,
+      total_customers: totalCustomers,
+      formatted_total: totalCustomers.toLocaleString('vi-VN')
+    });
+  } catch (error) {
+    console.error("Get total customers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy tổng khách hàng",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}
+
+async getRevenueChart(req, res) {
+  try {
+    const { start_date, end_date } = req.query;
+    
+    if (!start_date || !end_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp start_date và end_date'
+      });
+    }
+    
+    // Validate định dạng ngày
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Định dạng ngày không hợp lệ. Sử dụng YYYY-MM-DD'
+      });
+    }
+    
+    if (startDate > endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'start_date không được lớn hơn end_date'
+      });
+    }
+    
+    const chartData = await orderModel.getRevenueChartData(start_date, end_date);
+    
+    // Tạo hàm formatCurrency cục bộ
+    const formatCurrency = (amount) => {
+      if (typeof amount !== "number") {
+        amount = parseFloat(amount);
+      }
+      return amount.toLocaleString("vi-VN", { minimumFractionDigits: 0 });
+    };
+    
+    // Format dữ liệu trả về
+    const formatChartDate = (dateString) => {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
+    };
+    
+    // Xử lý dữ liệu theo từng loại
+    let processedData;
+    if (chartData.type === 'daily') {
+      processedData = chartData.data.map(item => ({
+        date: item.date,
+        label: formatChartDate(item.date),
+        revenue: item.revenue,
+        formatted_revenue: formatCurrency(item.revenue) // Sử dụng hàm cục bộ
+      }));
+    } else {
+      processedData = chartData.data.map(item => {
+        const start = new Date(item.start_date);
+        const end = new Date(item.end_date);
+        
+        const formatShortDate = (date) => {
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          return `${day}/${month}`;
+        };
+        
+        let label;
+        if (start.toDateString() === end.toDateString()) {
+          label = formatShortDate(start);
+        } else {
+          label = `${formatShortDate(start)}-${formatShortDate(end)}`;
+        }
+        
+        return {
+          ...item,
+          label: label,
+          formatted_revenue: formatCurrency(item.revenue) // Sử dụng hàm cục bộ
+        };
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        type: chartData.type,
+        interval_days: chartData.interval_days,
+        total_intervals: chartData.total_intervals || processedData.length,
+        data: processedData
+      },
+      message: `Lấy dữ liệu biểu đồ thành công (${chartData.type})`
+    });
+  } catch (error) {
+    console.error("Get revenue chart error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy dữ liệu biểu đồ",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}
 }
 
 module.exports = new OrderController();

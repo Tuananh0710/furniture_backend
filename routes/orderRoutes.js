@@ -2,16 +2,16 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
-const { auth } = require("../middlewares/auth");
+const { auth, adminAuth} = require("../middlewares/auth");
 
 // TẤT CẢ ROUTES DƯỚI ĐÂY CẦN XÁC THỰC
 router.use(auth);
 
-// GET /api/orders/my-orders - Lấy đơn hàng của user hiện tại
-// Đổi thành: router.get("/my-orders", ...) để dùng req.user.UserID (chuẩn hơn)
 router.get("/my-orders", orderController.getMyOrders);
-
-// GET /api/orders/:orderId - Lấy chi tiết đơn hàng
+router.get('/total', adminAuth, orderController.getTotalRevenue); 
+router.get('/total-orders', adminAuth, orderController.getTotalOrders);
+router.get('/total-customers', adminAuth, orderController.getTotalCustomers);
+router.get('/revenue-chart', adminAuth, orderController.getRevenueChart);
 router.get("/:orderId", orderController.getOrderDetail);
 
 module.exports = router;
