@@ -22,8 +22,4 @@ router.put("/update-quantity", CartController.updateItemQuantity);
 // Sử dụng DELETE hoặc POST/PUT và gửi userId, cartItemId trong body
 router.delete("/remove", CartController.removeItem);
 
-// 5. Xóa toàn bộ giỏ hàng
-// Sử dụng DELETE hoặc POST/PUT và gửi userId trong body
-router.delete("/clear", CartController.clearCart);
-
 module.exports = router;

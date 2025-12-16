@@ -129,12 +129,12 @@ class Cart {
 
       // Xử lý trường hợp sản phẩm không hợp lệ
       if (product.length === 0) {
-        throw new Error("Products is not available!");
+        throw new Error("Product is not available!");
       }
 
       // Kiểm tra số lượng tồn kho
       if (product[0].StockQuantity < quantity) {
-        throw new Error("Inventoty Stock is not enough!");
+        throw new Error("Inventory stock is not enough!");
       }
 
       // Kiểm tra sản phẩm đã có trong giỏ hàng chưa
@@ -296,43 +296,6 @@ class Cart {
       return await this.getCartWithItem(userId);
     } catch (error) {
       console.error("Remove item from cart error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Xóa toàn bộ giỏ hàng
-   * @param {number} userId - ID của người dùng
-   * @returns {Promise<Object>} Thông tin giỏ hàng rỗng sau khi xóa
-   */
-  static async clearCart(userId) {
-    try {
-      // Tìm giỏ hàng của người dùng
-      const cart = await this.findByUserId(userId);
-      if (!cart) return; // Nếu không có giỏ hàng thì không làm gì
-
-      // Xóa tất cả sản phẩm trong giỏ hàng
-      await db.query(
-        `
-        DELETE FROM CartItems 
-        WHERE CartID = ?
-      `,
-        [cart.CartID]
-      );
-
-      // Cập nhật thời gian sửa giỏ hàng
-      await db.query(
-        `
-        UPDATE Carts 
-        SET UpdatedAt = NOW() 
-        WHERE CartID = ?
-      `,
-        [cart.CartID]
-      );
-
-      return await this.getCartWithItem(userId);
-    } catch (error) {
-      console.error("Clear cart error:", error);
       throw error;
     }
   }

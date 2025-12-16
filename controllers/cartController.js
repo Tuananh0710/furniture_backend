@@ -151,42 +151,6 @@ class CartController {
       });
     }
   }
-
-  // Hàm xóa toàn bộ giỏ hàng
-  static async clearCart(req, res) {
-    try {
-      const { userId } = req.body; // Hoặc từ req.params nếu dùng DELETE /:userId
-      const uId = parseInt(userId);
-
-      if (isNaN(uId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid input: userId is invalid.",
-        });
-      }
-
-      const emptyCart = await Cart.clearCart(uId);
-
-      res.status(200).json({
-        success: true,
-        message: "Cart cleared successfully",
-        data: emptyCart || {
-          cart: null,
-          item: [],
-          totalAmount: 0,
-          totalItems: 0,
-        },
-      });
-    } catch (error) {
-      console.error("Clear cart error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error when clearing cart",
-        error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
-      });
-    }
-  }
 }
 
 module.exports = CartController;
