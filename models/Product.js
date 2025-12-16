@@ -91,7 +91,7 @@ class Product {
     };
   }
 
-  // Lấy theo ID - User
+  // Lấy chi tiết sp theo ID - User
   static async findById(id) {
     const products = await query(
       `
@@ -111,7 +111,7 @@ class Product {
     return products.length > 0 ? products[0] : null;
   }
 
-  // Tìm kiếm theo mã sản phẩm - User and Admin
+  // Tìm kiếm theo mã sản phẩm -  Admin
   static async findByCode(productCode) {
     const products = await query(
       `
@@ -128,7 +128,7 @@ class Product {
     return products.length > 0 ? products[0] : null;
   }
 
-  // Tìm kiếm -User and Admin
+  // Tìm kiếm - User and Admin
   static async search(searchFilters = {}) {
     const { q, category, minPrice, maxPrice, inStock } = searchFilters;
 
@@ -179,64 +179,6 @@ class Product {
 
     const products = await query(sql, params);
     return products;
-  }
-
-  // Lấy sản phẩm theo danh mục loại sp - User
-  static async findByCategory(categoryId, page = 1, limit = 12) {
-    // Lấy tất cả subcategories
-    const subCategories = await query(
-      `
-      WITH RECURSIVE CategoryTree AS (
-        SELECT CategoryID, CategoryName, ParentCategoryID
-        FROM Categories 
-        WHERE CategoryID = ?
-        UNION ALL
-        SELECT c.CategoryID, c.CategoryName, c.ParentCategoryID
-        FROM Categories c
-        INNER JOIN CategoryTree ct ON c.ParentCategoryID = ct.CategoryID
-      )
-      SELECT CategoryID FROM CategoryTree
-    `,
-      [categoryId]
-    );
-
-    const categoryIds = subCategories.map((cat) => cat.CategoryID);
-    const offset = (page - 1) * limit;
-
-    // Lấy sản phẩm
-    const products = await query(
-      `
-      SELECT 
-        p.*,
-        c.CategoryName
-      FROM Products p
-      LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
-      WHERE p.CategoryID IN (${categoryIds.map(() => "?").join(",")})
-      AND p.IsActive = TRUE
-      ORDER BY p.CreatedAt DESC
-      LIMIT ? OFFSET ?
-    `,
-      [...categoryIds, parseInt(limit), offset]
-    );
-
-    // Đếm tổng
-    const totalResult = await query(
-      `
-      SELECT COUNT(*) as total 
-      FROM Products 
-      WHERE CategoryID IN (${categoryIds.map(() => "?").join(",")})
-      AND IsActive = TRUE
-    `,
-      categoryIds
-    );
-
-    return {
-      products,
-      total: totalResult[0].total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(totalResult[0].total / limit),
-    };
   }
 
   // Thêm mới sản phẩm - Admin
@@ -398,7 +340,7 @@ class Product {
     };
   }
 
-  // Cập nhật trạng thái - Admin
+  // Cập nhật trạng thái sp isActive = ? - Admin
   static async updateStatus(id, isActive) {
     const result = await query(
       "UPDATE Products SET IsActive = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE ProductID = ?",

@@ -60,6 +60,7 @@ const productController = {
       res.json({
         success: true,
         data: products,
+        message: "K tìm thấy sản phẩm",
         total: products.length,
       });
     } catch (error) {
@@ -146,7 +147,7 @@ const productController = {
     }
   },
 
-  // Tìm kiếm theo mã sp - User and Addmin
+  // Tìm kiếm theo mã sp - Addmin
   getProductByCode: async (req, res) => {
     try {
       const { productCode } = req.params;

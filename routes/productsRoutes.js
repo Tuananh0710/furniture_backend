@@ -5,10 +5,10 @@ const { auth, authorize } = require("../middlewares/auth");
 
 // Public routes - không cần xác thực
 router.get("/", productController.getAllProducts); // lấy 10sp bất kỳ để đẩy lên phần product của trang home.html
-router.get("/search", productController.searchProducts); // tìm
-router.get("/category/:categoryId", productController.getProductsByCategory);
+router.get("/search", productController.searchProducts); // tìm kiếm - fix ở front
+// router.get("/category/:categoryId", productController.getProductsByCategory); // Lấy sản phẩm theo danh mục - User
 router.get("/:id", productController.getProductById); //Lấy chi tiết 1 sp theo id
-router.get("/code/:productCode", productController.getProductByCode);
+router.get("/code/:productCode", productController.getProductByCode); // Note
 router.get("/:id/related", productController.getRelatedProducts); //Lấy ra những sản phẩm cùng loại
 
 // Protected routes - cần xác thực và phân quyền
