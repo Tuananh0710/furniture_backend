@@ -60,7 +60,7 @@ const productController = {
       res.json({
         success: true,
         data: products,
-        message: "K tìm thấy sản phẩm",
+        message: "Danh sách sản phẩm tìm kiếm thành công",
         total: products.length,
       });
     } catch (error) {

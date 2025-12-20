@@ -350,7 +350,7 @@ class Product {
     return result.affectedRows > 0;
   }
 
-  // Lấy sản phẩm liên quan - User/Product-detail
+  // Lấy sản phẩm liên quan - User
   static async getRelatedProducts(productId, categoryId, limit = 4) {
     const products = await query(
       `

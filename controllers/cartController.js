@@ -30,10 +30,9 @@ class CartController {
     }
   }
 
-  // Hàm thêm sản phẩm vào giỏ hàng
   static async addItem(req, res) {
     try {
-      const { userId, productId, quantity } = req.body; // Lấy từ body
+      const { userId, productId, quantity } = req.body;
       const qty = parseInt(quantity) || 1;
       const uId = parseInt(userId);
       const pId = parseInt(productId);
@@ -42,37 +41,43 @@ class CartController {
         return res.status(400).json({
           success: false,
           message: "Invalid input: userId, productId, or quantity is invalid.",
+          details: {
+            userId: uId,
+            productId: pId,
+            quantity: qty,
+          },
         });
       }
-
       const updatedCart = await Cart.addItem(uId, pId, qty);
-
       res.status(200).json({
         success: true,
         message: "Product added to cart successfully",
         data: updatedCart,
       });
     } catch (error) {
-      console.error("Add item to cart error:", error);
-      // Xử lý các lỗi nghiệp vụ từ Model (ví dụ: sản phẩm không tồn tại, hết hàng)
       let statusCode = 500;
+      let message = "Server error when adding item to cart";
+
       if (
         error.message.includes("available") ||
         error.message.includes("enough")
       ) {
         statusCode = 400;
+        message = error.message;
+      } else if (error.message.includes("Missing required parameters")) {
+        statusCode = 400;
+        message = "Missing required parameters";
       }
-
       res.status(statusCode).json({
         success: false,
-        message: error.message || "Server error when adding item to cart",
+        message: message,
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       });
     }
   }
 
-  // Hàm cập nhật số lượng sản phẩm trong giỏ hàng
   static async updateItemQuantity(req, res) {
     try {
       const { userId, cartItemId, quantity } = req.body;
@@ -86,9 +91,7 @@ class CartController {
           message: "Invalid input: userId, cartItemId, or quantity is invalid.",
         });
       }
-
       const updatedCart = await Cart.updateItemQuantity(uId, cItemId, qty);
-
       res.status(200).json({
         success: true,
         message: "Cart item quantity updated successfully",
@@ -96,7 +99,6 @@ class CartController {
       });
     } catch (error) {
       console.error("Update cart item quantity error:", error);
-      // Xử lý các lỗi nghiệp vụ từ Model
       let statusCode = 500;
       if (
         error.message.includes("không tồn tại") ||
@@ -115,10 +117,9 @@ class CartController {
     }
   }
 
-  // Hàm xóa sản phẩm khỏi giỏ hàng
   static async removeItem(req, res) {
     try {
-      const { userId, cartItemId } = req.body; // Hoặc từ req.params nếu dùng DELETE /:userId/:cartItemId
+      const { userId, cartItemId } = req.body;
       const uId = parseInt(userId);
       const cItemId = parseInt(cartItemId);
 

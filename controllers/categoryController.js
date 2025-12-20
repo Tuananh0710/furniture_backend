@@ -1,10 +1,6 @@
 const Category = require("../models/Category");
 
 const categoryController = {
-  /**
-   * Lấy tất cả sản phẩm theo CategoryID
-   * GET /api/products/category/:id
-   */
   getProductsByCategory: async (req, res) => {
     try {
       const { id } = req.params;
