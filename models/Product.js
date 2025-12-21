@@ -1,4 +1,4 @@
-const { query } = require("../config/database"); // Sửa thành query
+const { query } = require("../config/database");
 
 class Product {
   // Lấy tất cả sản phẩm - User
@@ -297,47 +297,6 @@ class Product {
 
     const products = await query(sql, params);
     return products.length > 0;
-  }
-
-  // Lấy reviews của sản phẩm - User
-  static async getReviews(productId) {
-    const reviews = await query(
-      `
-      SELECT 
-        r.*,
-        u.FullName,
-        u.Username
-      FROM Reviews r
-      LEFT JOIN Users u ON r.UserID = u.UserID
-      WHERE r.ProductID = ? AND r.IsApproved = TRUE
-      ORDER BY r.CreatedAt DESC
-    `,
-      [productId]
-    );
-
-    return reviews;
-  }
-
-  // Tính rating trung bình - User
-  static async calculateAverageRating(productId) {
-    const reviews = await query(
-      `
-      SELECT Rating FROM Reviews 
-      WHERE ProductID = ? AND IsApproved = TRUE
-    `,
-      [productId]
-    );
-
-    if (reviews.length === 0) {
-      return { averageRating: 0, totalReviews: 0 };
-    }
-
-    const avgRating =
-      reviews.reduce((sum, review) => sum + review.Rating, 0) / reviews.length;
-    return {
-      averageRating: Math.round(avgRating * 10) / 10,
-      totalReviews: reviews.length,
-    };
   }
 
   // Cập nhật trạng thái sp isActive = ? - Admin

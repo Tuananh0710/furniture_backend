@@ -230,6 +230,7 @@ class OrderModel {
       throw error;
     }
   }
+
   async getTotalRevenueByDateRange(startDate, endDate) {
     try {
       const query = `
