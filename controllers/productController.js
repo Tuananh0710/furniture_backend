@@ -104,7 +104,6 @@ const productController = {
     try {
       const productData = req.body;
 
-      // Kiểm tra product code trùng
       const isCodeExists = await Product.isCodeExists(productData.ProductCode);
       if (isCodeExists) {
         return res.status(400).json({
@@ -130,7 +129,6 @@ const productController = {
         });
       }
 
-      // Lấy thông tin sản phẩm vừa tạo
       const newProduct = await Product.findById(productId);
 
       res.status(201).json({
@@ -179,6 +177,8 @@ const productController = {
       const { id } = req.params;
       const productData = req.body;
 
+      const yetUpdateProduct = await Product.findById(id);
+
       const isUpdated = await Product.update(id, productData);
 
       if (!isUpdated) {
@@ -190,9 +190,10 @@ const productController = {
 
       const updatedProduct = await Product.findById(id);
 
-      res.json({
+      res.status(200).json({
         success: true,
         message: "Cập nhật sản phẩm thành công",
+        Yetdata: yetUpdateProduct,
         data: updatedProduct,
       });
     } catch (error) {

@@ -12,11 +12,7 @@ class OrderController {
             "Người dùng chưa đăng nhập hoặc phiên đăng nhập không hợp lệ",
         });
       }
-
-      // Gọi model để lấy đơn hàng
       const orders = await orderModel.getOrdersByUserId(userId);
-
-      // Xử lý dữ liệu đơn hàng để hiển thị
       const processedOrders = orders.map((order) => ({
         OrderID: order.OrderID,
         Date: this.formatDate(order.OrderDate),
@@ -26,7 +22,6 @@ class OrderController {
         ShippingStatus: this.getShippingStatusText(order.OrderStatus),
       }));
 
-      // Trả về kết quả
       return res.status(200).json({ data: processedOrders });
     } catch (error) {
       console.error(" Lỗi không xác định:", error);
@@ -42,7 +37,7 @@ class OrderController {
   getOrderDetail = async (req, res) => {
     try {
       const { orderId } = req.params;
-      const userId = req.user.UserID; // Đã xác thực qua middleware `auth`
+      const userId = req.user.UserID;
 
       if (!orderId || isNaN(parseInt(orderId))) {
         return res.status(400).json({
@@ -50,8 +45,6 @@ class OrderController {
           message: "OrderID không hợp lệ",
         });
       }
-
-      // Lấy chi tiết đơn hàng
       const orderDetail = await orderModel.getOrderDetailById(
         parseInt(orderId)
       );
@@ -62,7 +55,6 @@ class OrderController {
           message: `Không tìm thấy đơn hàng ID: ${orderId}`,
         });
       }
-
       const processedDetail = {
         OrderID: orderDetail.OrderID,
         OrderCode: orderDetail.OrderCode,
@@ -80,13 +72,18 @@ class OrderController {
           ProductName: item.ProductName,
           ProductCode: item.ProductCode,
           Quantity: item.Quantity,
+          Color: item.Color,
           UnitPrice: this.formatCurrency(item.UnitPrice),
           Subtotal: this.formatCurrency(item.Quantity * item.UnitPrice),
           FirstImageUrl: item.FirstImageUrl,
         })),
       };
 
-      return res.status(200).json({ data: processedDetail });
+      return res.status(200).json({
+        success: true,
+        message: "Lấy Chi tiết đơn hàng thành công",
+        data: processedDetail,
+      });
     } catch (error) {
       console.error(" Lỗi khi lấy chi tiết đơn hàng:", error);
       res.status(500).json({

@@ -1,7 +1,7 @@
 const db = require("../config/database");
 
 class OrderModel {
-  // Lấy tất cả đơn hàng của user hiện tại
+  // Lấy tất cả đơn hàng của user hiện tại-User
   async getOrdersByUserId(userId) {
     try {
       console.log(`📦 Lấy đơn hàng cho UserID: ${userId}`);
@@ -33,12 +33,9 @@ class OrderModel {
     }
   }
 
-  // Lấy chi tiết đơn hàng (bao gồm danh sách sản phẩm)
+  // Lấy chi tiết đơn hàng (bao gồm danh sách sản phẩm) - User
   async getOrderDetailById(orderId) {
     try {
-      console.log(`🔍 Lấy chi tiết đơn hàng ID: ${orderId}`);
-
-      // 1. Lấy thông tin chính của Đơn hàng
       const orderInfo = await db.query(
         `
             SELECT 
@@ -62,8 +59,6 @@ class OrderModel {
       if (orderInfo.length === 0) {
         return null;
       }
-
-      // 2. Lấy danh sách Sản phẩm (Order Items)
       const orderItems = await db.query(
         `
             SELECT
@@ -73,20 +68,16 @@ class OrderModel {
                 p.ProductID,
                 p.ProductName,
                 p.ProductCode,
-                p.ImageURLs
+                p.ImageURLs,
+                p.Color
             FROM OrderItems oi
             INNER JOIN Products p ON oi.ProductID = p.ProductID
             WHERE oi.OrderID = ?`,
         [orderId]
       );
-
-      console.log(`✅ Tìm thấy ${orderItems.length} mặt hàng`);
-
-      // 3. Kết hợp và trả về
       return {
         ...orderInfo[0],
         Items: orderItems.map((item) => {
-          // Chuyển chuỗi JSON ImageURLs thành mảng
           const imageUrls = JSON.parse(item.ImageURLs || "[]");
           return {
             ProductID: item.ProductID,
@@ -94,16 +85,19 @@ class OrderModel {
             UnitPrice: item.UnitPrice,
             ProductName: item.ProductName,
             ProductCode: item.ProductCode,
-            // Lấy URL ảnh đầu tiên
+            Color: item.Color,
             FirstImageUrl: imageUrls.length > 0 ? imageUrls[0] : null,
           };
         }),
       };
     } catch (error) {
-      console.error("❌ Lỗi khi lấy chi tiết đơn hàng:", error);
-      throw error;
+      res.status(500).JSON({
+        success: false,
+        message: "Lỗi server khi lấy chi tiết đơn hàng",
+      });
     }
   }
+  //Admin
   async getTotalOrder(status) {
     try {
       const query = `
@@ -134,10 +128,11 @@ class OrderModel {
         today_orders: result[0]?.today_orders || 0,
       };
     } catch (error) {
-      console.error("❌ Lỗi khi lấy doanh thu hôm nay:", error);
+      console.error("Lỗi khi lấy doanh thu hôm nay:", error);
       throw error;
     }
   }
+  //Admin
   async getSoldProductsByPaymentStatus(paymentStatus, date = null) {
     try {
       const targetDate = date || new Date().toISOString().split("T")[0];
@@ -172,6 +167,8 @@ class OrderModel {
       throw error;
     }
   }
+
+  //Admin
   async getDashboardStats(date = null) {
     try {
       const targetDate = date || new Date().toISOString().split("T")[0];
@@ -231,6 +228,25 @@ class OrderModel {
     }
   }
 
+  //Admin
+  async getStockCounts(date = null) {
+    try {
+      const result = await db.query(`
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN StockQuantity > 5 THEN 1 ELSE 0 END) as in_stock,
+                    SUM(CASE WHEN StockQuantity = 0 THEN 1 ELSE 0 END) as out_of_stock,
+                    SUM(CASE WHEN StockQuantity > 0 AND StockQuantity <= 5 THEN 1 ELSE 0 END) as low_stock
+                FROM products
+            `);
+      return result[0];
+    } catch (error) {
+      console.error("Lỗi khi lấy thống kê kho:", error);
+      throw error;
+    }
+  }
+
+  //Admin
   async getTotalRevenueByDateRange(startDate, endDate) {
     try {
       const query = `
@@ -254,6 +270,7 @@ class OrderModel {
     }
   }
 
+  //Admin
   async getTotalOrdersByDateRange(startDate, endDate) {
     try {
       const query = `
@@ -276,6 +293,7 @@ class OrderModel {
     }
   }
 
+  //Admin
   async getTotalCustomersByDateRange(startDate, endDate) {
     try {
       const query = `
@@ -297,6 +315,7 @@ class OrderModel {
       throw error;
     }
   }
+  //Admin
   async getRevenueChartData(startDate, endDate) {
     try {
       console.log(
@@ -417,7 +436,7 @@ class OrderModel {
     }
   }
 
-  // Hàm helper: Lấy doanh thu cho một khoảng thời gian
+  // Hàm helper: Lấy doanh thu cho một khoảng thời gian-Admin
   async getRevenueForInterval(startDate, endDate) {
     try {
       const query = `
@@ -439,7 +458,7 @@ class OrderModel {
     }
   }
 
-  // Hàm helper: Tạo label cho khoảng thời gian
+  // Hàm helper: Tạo label cho khoảng thời gian - Admin
   getIntervalLabel(startDate, endDate) {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -457,7 +476,7 @@ class OrderModel {
     return `${formatDate(start)} - ${formatDate(end)}`;
   }
 
-  // Hàm helper: Định dạng ngày cho biểu đồ
+  // Hàm helper: Định dạng ngày cho biểu đồ -Admin
   formatChartDate(dateString) {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");

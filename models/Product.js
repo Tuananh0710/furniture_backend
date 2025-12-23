@@ -5,7 +5,7 @@ class Product {
   static async findAll(filters = {}) {
     const {
       page = 1,
-      limit = 10,
+      limit = 12,
       categoryId,
       minPrice,
       maxPrice,
@@ -188,6 +188,7 @@ class Product {
       ProductCode,
       CategoryID,
       Price,
+      CostPrice,
       Description,
       Material,
       Color,
@@ -201,15 +202,16 @@ class Product {
     const result = await query(
       `
       INSERT INTO Products (
-        ProductName, ProductCode, CategoryID, Price, Description, 
+        ProductName, ProductCode, CategoryID, Price, CostPrice, Description, 
         Material, Color, Dimensions, Weight, Brand, StockQuantity, ImageURLs
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         ProductName,
         ProductCode,
         CategoryID,
         Price,
+        CostPrice,
         Description,
         Material,
         Color,
@@ -228,36 +230,44 @@ class Product {
   static async update(id, productData) {
     const {
       ProductName,
+      ProductCode,
       CategoryID,
       Price,
+      CostPrice,
       Description,
       Material,
       Color,
       Dimensions,
       Weight,
       Brand,
+      StockQuantity,
       ImageURLs,
+      isActive,
     } = productData;
 
     const result = await query(
       `
       UPDATE Products 
-      SET ProductName = ?, CategoryID = ?, Price = ?, Description = ?,
-          Material = ?, Color = ?, Dimensions = ?, Weight = ?, Brand = ?,
-          ImageURLs = ?, UpdatedAt = CURRENT_TIMESTAMP
+      SET ProductName = ?, ProductCode = ?, CategoryID = ?, Price = ?, CostPrice = ?, Description = ?,
+          Material = ?, Color = ?, Dimensions = ?, Weight = ?, Brand = ?, StockQuantity = ?,
+          ImageURLs = ?, isActive = ?, UpdatedAt = CURRENT_TIMESTAMP
       WHERE ProductID = ?
     `,
       [
         ProductName,
+        ProductCode,
         CategoryID,
         Price,
+        CostPrice,
         Description,
         Material,
         Color,
         Dimensions,
         Weight,
         Brand,
+        StockQuantity,
         JSON.stringify(ImageURLs || []),
+        isActive,
         id,
       ]
     );
