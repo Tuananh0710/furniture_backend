@@ -49,7 +49,8 @@ class OrderModel {
                 o.PaymentMethod,
                 o.PaymentStatus,
                 u.FullName,
-                u.Email
+                u.Email,
+                u.Phone
             FROM Orders o
             INNER JOIN Users u ON o.UserID = u.UserID
             WHERE o.OrderID = ?`,
@@ -69,7 +70,8 @@ class OrderModel {
                 p.ProductName,
                 p.ProductCode,
                 p.ImageURLs,
-                p.Color
+                p.Color,
+                p.Dimensions
             FROM OrderItems oi
             INNER JOIN Products p ON oi.ProductID = p.ProductID
             WHERE oi.OrderID = ?`,
@@ -86,6 +88,7 @@ class OrderModel {
             ProductName: item.ProductName,
             ProductCode: item.ProductCode,
             Color: item.Color,
+            Dimensions: item.Dimensions,
             FirstImageUrl: imageUrls.length > 0 ? imageUrls[0] : null,
           };
         }),
@@ -263,7 +266,7 @@ class OrderModel {
       return result[0]?.total_revenue || 0;
     } catch (error) {
       console.error(
-        `❌ Lỗi khi lấy doanh thu từ ${startDate} đến ${endDate}:`,
+        `Lỗi khi lấy doanh thu từ ${startDate} đến ${endDate}:`,
         error
       );
       throw error;
@@ -278,7 +281,7 @@ class OrderModel {
         COUNT(*) AS total_orders
       FROM Orders
       WHERE DATE(OrderDate) BETWEEN DATE(?) AND DATE(?)
-        AND Status != 'Pending' -- Có thể điều chỉnh tùy logic
+        AND Status NOT IN ('Pending', 'Cancelled', 'Returned')
     `;
 
       const result = await db.query(query, [startDate, endDate]);
@@ -301,7 +304,7 @@ class OrderModel {
         COUNT(DISTINCT UserID) AS total_customers
       FROM Orders
       WHERE DATE(OrderDate) BETWEEN DATE(?) AND DATE(?)
-        AND Status != 'Cancelled' -- Không tính đơn đã hủy
+        AND Status != 'Cancelled'
     `;
 
       const result = await db.query(query, [startDate, endDate]);
@@ -309,7 +312,7 @@ class OrderModel {
       return result[0]?.total_customers || 0;
     } catch (error) {
       console.error(
-        `❌ Lỗi khi lấy tổng khách hàng từ ${startDate} đến ${endDate}:`,
+        `Lỗi khi lấy tổng khách hàng từ ${startDate} đến ${endDate}:`,
         error
       );
       throw error;
@@ -318,54 +321,49 @@ class OrderModel {
   //Admin
   async getRevenueChartData(startDate, endDate) {
     try {
-      console.log(
-        `📊 Lấy dữ liệu biểu đồ doanh thu từ ${startDate} đến ${endDate}`
-      );
-
-      // Chuyển đổi ngày thành đối tượng Date
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Tính số ngày trong khoảng thời gian
       const timeDiff = Math.abs(end - start);
       const totalDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-
-      console.log(`📅 Tổng số ngày: ${totalDays}`);
 
       // Nếu số ngày <= 10, lấy dữ liệu theo ngày
       if (totalDays <= 10) {
         const query = `
-        SELECT 
-          DATE(OrderDate) AS date,
-          COALESCE(SUM(TotalAmount), 0) AS revenue
-        FROM Orders
-        WHERE PaymentStatus = 'Paid'
-          AND DATE(OrderDate) BETWEEN DATE(?) AND DATE(?)
-        GROUP BY DATE(OrderDate)
-        ORDER BY DATE(OrderDate)
-      `;
+              SELECT 
+                DATE(OrderDate) AS date,
+                COALESCE(SUM(TotalAmount), 0) AS revenue,
+                COUNT(OrderId) AS total_orders
+              FROM Orders
+              WHERE PaymentStatus = 'Paid'
+                AND DATE(OrderDate) BETWEEN DATE(?) AND DATE(?)
+              GROUP BY DATE(OrderDate)
+              ORDER BY DATE(OrderDate)
+            `;
 
         const result = await db.query(query, [startDate, endDate]);
 
-        // Tạo mảng đầy đủ các ngày
         const allDates = [];
         const dateMap = {};
 
-        // Tạo map từ kết quả query
         result.forEach((item) => {
           const date = new Date(item.date);
           const dateStr = date.toISOString().split("T")[0];
-          dateMap[dateStr] = item.revenue;
+          dateMap[dateStr] = {
+            revenue: item.revenue,
+            total_orders: item.total_orders,
+          };
         });
 
-        // Tạo mảng tất cả ngày trong khoảng
         const currentDate = new Date(start);
         while (currentDate <= end) {
           const dateStr = currentDate.toISOString().split("T")[0];
           allDates.push({
             date: dateStr,
-            revenue: dateMap[dateStr] || 0,
+            revenue: dateMap[dateStr]?.revenue || 0,
+            total_orders: dateMap[dateStr]?.total_orders || 0,
           });
+
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
@@ -374,12 +372,9 @@ class OrderModel {
           interval_days: 1,
           data: allDates,
         };
-      }
-      // Nếu nhiều hơn 10 ngày, chia thành 10 khoảng
-      else {
+      } else {
         // Tính số ngày mỗi khoảng
         const intervalDays = Math.ceil(totalDays / 10);
-        console.log(`📈 Chia thành 10 khoảng, mỗi khoảng ${intervalDays} ngày`);
 
         // Tạo mảng các mốc thời gian
         const intervals = [];
@@ -420,7 +415,7 @@ class OrderModel {
         // Kết hợp dữ liệu
         const chartData = intervals.map((interval, index) => ({
           ...interval,
-          revenue: revenues[index] || 0,
+          report: revenues[index] || 0,
         }));
 
         return {
@@ -436,25 +431,33 @@ class OrderModel {
     }
   }
 
-  // Hàm helper: Lấy doanh thu cho một khoảng thời gian-Admin
+  // Hàm helper: Lấy doanh thu cho một khoảng thời gian > 10 ngày-Admin
   async getRevenueForInterval(startDate, endDate) {
     try {
       const query = `
       SELECT 
-        COALESCE(SUM(TotalAmount), 0) AS revenue
+         COALESCE(SUM(TotalAmount), 0) AS revenue,
+        COUNT(OrderId) AS total_orders
       FROM Orders
       WHERE PaymentStatus = 'Paid'
         AND DATE(OrderDate) BETWEEN DATE(?) AND DATE(?)
     `;
 
       const result = await db.query(query, [startDate, endDate]);
-      return result[0]?.revenue || 0;
+
+      return {
+        revenue: result[0]?.revenue || 0,
+        total_orders: result[0]?.total_orders || 0,
+      };
     } catch (error) {
       console.error(
         `Lỗi khi lấy doanh thu từ ${startDate} đến ${endDate}:`,
         error
       );
-      return 0;
+      return {
+        revenue: result[0]?.revenue || 0,
+        total_orders: result[0]?.total_orders || 0,
+      };
     }
   }
 

@@ -13,6 +13,7 @@ class OrderController {
         });
       }
       const orders = await orderModel.getOrdersByUserId(userId);
+
       const processedOrders = orders.map((order) => ({
         OrderID: order.OrderID,
         Date: this.formatDate(order.OrderDate),
@@ -55,11 +56,15 @@ class OrderController {
           message: `Không tìm thấy đơn hàng ID: ${orderId}`,
         });
       }
+
       const processedDetail = {
         OrderID: orderDetail.OrderID,
         OrderCode: orderDetail.OrderCode,
         OrderDate: this.formatDate(orderDetail.OrderDate),
         TotalAmount: this.formatCurrency(orderDetail.TotalAmount),
+        Subtotally: this.formatCurrency(
+          orderDetail.TotalAmount - orderDetail.ShippingFee
+        ),
         OrderStatus: this.getShippingStatusText(orderDetail.OrderStatus),
         PaymentMethod: orderDetail.PaymentMethod,
         PaymentStatus: this.getPaymentStatusText(orderDetail.PaymentStatus),
@@ -67,12 +72,14 @@ class OrderController {
         ShippingFee: this.formatCurrency(orderDetail.ShippingFee),
         CustomerName: orderDetail.FullName,
         CustomerEmail: orderDetail.Email,
+        CustomerPhone: orderDetail.Phone,
         Items: orderDetail.Items.map((item) => ({
           ProductID: item.ProductID,
           ProductName: item.ProductName,
           ProductCode: item.ProductCode,
           Quantity: item.Quantity,
           Color: item.Color,
+          Dimensions: item.Dimensions,
           UnitPrice: this.formatCurrency(item.UnitPrice),
           Subtotal: this.formatCurrency(item.Quantity * item.UnitPrice),
           FirstImageUrl: item.FirstImageUrl,
@@ -151,9 +158,9 @@ class OrderController {
 
       res.status(200).json({
         success: true,
-        revenue: new Intl.NumberFormat("vi-VN", {
+        revenue: new Intl.NumberFormat("en-US", {
           style: "currency",
-          currency: "VND",
+          currency: "USD",
         }).format(totalRevenue),
       });
     } catch (error) {
@@ -287,8 +294,11 @@ class OrderController {
         processedData = chartData.data.map((item) => ({
           date: item.date,
           label: formatChartDate(item.date),
-          revenue: item.revenue,
-          formatted_revenue: formatCurrency(item.revenue), // Sử dụng hàm cục bộ
+          report: {
+            revenue: item.revenue,
+            total_orders: item.total_orders,
+          },
+          formatted_revenue: formatCurrency(item.revenue),
         }));
       } else {
         processedData = chartData.data.map((item) => {
@@ -311,7 +321,8 @@ class OrderController {
           return {
             ...item,
             label: label,
-            formatted_revenue: formatCurrency(item.revenue), // Sử dụng hàm cục bộ
+            formatted_revenue: formatCurrency(item.revenue),
+            total_orders: item.total_orders,
           };
         });
       }

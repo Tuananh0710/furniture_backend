@@ -9,13 +9,7 @@ const productController = {
 
       res.json({
         success: true,
-        data: result.products,
-        pagination: {
-          page: result.page,
-          limit: result.limit,
-          total: result.total,
-          totalPages: result.totalPages,
-        },
+        data: result,
       });
     } catch (error) {
       console.error("Get products error:", error);

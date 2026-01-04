@@ -13,8 +13,7 @@ class CheckoutController {
         });
       }
 
-      // 1. Lấy thông tin giỏ hàng
-      const cartItems = await checkoutModel.getCartItemsSimple(userId); // Dùng phiên bản simple
+      const cartItems = await checkoutModel.getCartItemsSimple(userId);
 
       if (!cartItems || cartItems.length === 0) {
         return res.status(400).json({
@@ -23,18 +22,15 @@ class CheckoutController {
         });
       }
 
-      // 2. Lấy thông tin người dùng
       const userInfo = await checkoutModel.getUserInfo(userId);
 
-      // 3. Tính toán tổng tiền
       const subtotal = cartItems.reduce((sum, item) => {
         return sum + item.price * item.quantity;
       }, 0);
 
-      const shippingFee = 50000;
+      const shippingFee = 10;
       const totalAmount = subtotal + shippingFee;
 
-      // 4. Trả về dữ liệu checkout
       res.json({
         success: true,
         data: {
@@ -60,13 +56,13 @@ class CheckoutController {
             itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
           },
           shippingMethods: [
-            { id: "express", name: "Sapo Express - J&T Express", fee: 50000 },
+            { id: "express", name: "Sapo Express - J&T Express", fee: 10 },
           ],
           paymentMethods: [{ id: "cod", name: "Cash on Delivery (COD)" }],
         },
       });
     } catch (error) {
-      console.error("❌ Lỗi khi lấy thông tin checkout:", error);
+      console.error(" Lỗi khi lấy thông tin checkout:", error);
       res.status(500).json({
         success: false,
         message: "Lỗi server khi lấy thông tin checkout",
@@ -99,7 +95,6 @@ class CheckoutController {
         paymentMethod = "cod",
       } = req.body;
 
-      // Kiểm tra dữ liệu đầu vào
       const requiredFields = [];
       if (!shippingAddress.trim()) requiredFields.push("shippingAddress");
       if (!phone.trim()) requiredFields.push("phone");
@@ -117,7 +112,6 @@ class CheckoutController {
         });
       }
 
-      // Validate phone format (basic check)
       const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
       if (!phoneRegex.test(phone.replace(/\s/g, ""))) {
         return res.status(400).json({
@@ -151,11 +145,9 @@ class CheckoutController {
       const subtotal = cartItems.reduce((sum, item) => {
         return sum + item.price * item.quantity;
       }, 0);
-
-      const shippingFee = 50000;
+      const shippingFee = 10;
       const totalAmount = subtotal + shippingFee;
 
-      // 4. Tạo đơn hàng (kết hợp thông tin giao hàng với ghi chú)
       const deliveryNotes = "";
 
       const orderData = {
@@ -177,15 +169,10 @@ class CheckoutController {
         },
       };
 
-      console.log("📦 Dữ liệu đơn hàng:", orderData);
-
-      // 5. Lưu đơn hàng vào database
       const orderResult = await checkoutModel.createOrder(orderData);
 
-      // 6. Cập nhật thông tin người dùng nếu cần
       await this.updateUserInfo(userId, { fullName, phone });
 
-      // 7. Trả về kết quả
       res.json({
         success: true,
         message: "Đặt hàng thành công!",
@@ -198,9 +185,7 @@ class CheckoutController {
         },
       });
     } catch (error) {
-      console.error("❌ Lỗi khi đặt hàng:", error);
-
-      // Kiểm tra lỗi tồn kho
+      console.error(" Lỗi khi đặt hàng:", error);
       if (
         error.message.includes("StockQuantity") ||
         error.message.includes("không đủ")
@@ -221,7 +206,6 @@ class CheckoutController {
     }
   };
 
-  // Helper: Cập nhật thông tin người dùng
   async updateUserInfo(userId, userData) {
     try {
       const db = require("../config/database");
@@ -249,12 +233,10 @@ class CheckoutController {
 
       await connection.release();
     } catch (error) {
-      console.error("❌ Lỗi khi cập nhật thông tin người dùng:", error);
-      // Không throw error vì đây chỉ là cập nhật phụ
+      console.error(" Lỗi khi cập nhật thông tin người dùng:", error);
     }
   }
 
-  // Helper: Lấy tên phương thức thanh toán
   getPaymentMethodName(methodId) {
     const methods = {
       cod: "Cash",

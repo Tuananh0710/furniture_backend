@@ -4,8 +4,6 @@ class Product {
   // Lấy tất cả sản phẩm - User
   static async findAll(filters = {}) {
     const {
-      page = 1,
-      limit = 12,
       categoryId,
       minPrice,
       maxPrice,
@@ -73,22 +71,24 @@ class Product {
 
     sql += ` ORDER BY p.${sortField} ${order}`;
 
-    // Phân trang
-    const offset = (page - 1) * limit;
-    sql += ` LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    // // Phân trang
+    // const offset = (page - 1) * limit;
+    // sql += ` LIMIT ? OFFSET ?`;
+    // params.push(parseInt(limit), offset);
 
     // Thực hiện query - SỬA THÀNH query()
     const products = await query(sql, params);
-    const totalResult = await query(countSql, params.slice(0, -2));
+    // const totalResult = await query(countSql, params.slice(0, -2));
 
-    return {
-      products,
-      total: totalResult[0].total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(totalResult[0].total / limit),
-    };
+    // return {
+    //   products,
+    //   total: totalResult[0].total,
+    //   page: parseInt(page),
+    //   limit: parseInt(limit),
+    //   totalPages: Math.ceil(totalResult[0].total / limit),
+    // };
+
+    return products;
   }
 
   // Lấy chi tiết sp theo ID - User

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
 const { auth, adminAuth } = require("../middlewares/auth");
+const adminController = require("../controllers/adminController");
 
 router.use(auth);
 
